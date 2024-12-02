@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const languages = [
   {
@@ -30,6 +30,45 @@ const languages = [
 function App() {
   const [sourceLang, setSourceLang] = useState("pt-BR");
   const [targetLang, setTargetLang] = useState("en-US");
+  const [sourceText, setSourceText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [translatedText, setTranslatedText] = useState("");
+
+  const swapLang = () => {
+    setSourceLang(targetLang);
+    setTargetLang(sourceLang);
+    setSourceText(translatedText);
+  };
+
+  useEffect(() => {
+    if (sourceText.trim()) {
+      setIsLoading(true);
+      const delay = setTimeout(() => {
+        handleTranslate();
+      }, 500);
+
+      return () => clearTimeout(delay);
+    }
+  }, [sourceText, sourceLang, targetLang]);
+
+  const handleTranslate = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(sourceText)}&langpair=${sourceLang}|${targetLang}`,
+      );
+      if (!res.ok) {
+        throw new Error(`HTTP ERROR: ${res.status}`);
+      }
+      const data = await res.json();
+      setTranslatedText(data.responseData.translatedText);
+    } catch (error) {
+      console.error("Erro na tradução:", error);
+      setTranslatedText("Erro ao traduzir o texto");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50/70">
@@ -53,7 +92,10 @@ function App() {
                 </option>
               ))}
             </select>
-            <button className="rounded-full p-2 outline-none hover:bg-gray-100">
+            <button
+              onClick={swapLang}
+              className="rounded-full p-2 outline-none hover:bg-gray-100"
+            >
               <svg
                 className="text-headerColor h-5 w-5"
                 fill="none"
@@ -86,16 +128,18 @@ function App() {
             <div className="p-4">
               <textarea
                 placeholder="Digite o texto aqui..."
+                value={sourceText}
+                onChange={(e) => setSourceText(e.target.value)}
                 className="h-40 w-full resize-none border-none bg-transparent text-lg text-gray-800 outline-none"
-                name=""
-                id=""
               ></textarea>
             </div>
             <div className="relative border-l border-gray-200 bg-gray-100 p-4">
-              <div className="absolute inset-0 flex items-center justify-center p-4">
-                <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-gray-900"></div>
-
-                <p className="text-lg text-gray-800">Olá mundo</p>
+              <div className="text-lg text-gray-800">
+                {isLoading ? (
+                  <div className="h-8 w-8 animate-spin content-center rounded-full border-t-2 border-gray-900"></div>
+                ) : (
+                  <p>{translatedText}</p>
+                )}
               </div>
             </div>
           </div>
